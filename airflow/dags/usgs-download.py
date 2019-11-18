@@ -1,16 +1,15 @@
+# fix import paths
 import os
 import sys
-
-# print(os.getcwd())
-# sys.path.append("/Users/allen/Projects/UMD/current/project")
-# import pdb; pdb.set_trace()
-
-sys.path.append(os.path.abspath("."))
+sys.path.append(
+    os.path.abspath(os.path.join(
+        os.path.dirname(__file__),
+        os.path.pardir,
+        os.path.pardir
+    ))
+)
 
 from airflow import DAG
-# from airflow.operators.bash_operator import BashOperator
-# from airflow.operators.python_operator import PythonOperator
-# from airflow.operators.dummy_operator import DummyOperator
 from ariadne.operators import *
 from datetime import datetime, timedelta
 from pprint import pprint
