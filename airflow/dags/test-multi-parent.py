@@ -56,7 +56,7 @@ def handler(data, field, *args, **kwargs):
 
 def handlerDiff(data, *args, **kwargs):
     print(data)
-    return data
+    return data[1] - data[0]
 
 t2 = PythonOperator(
     task_id='handlerOpen',

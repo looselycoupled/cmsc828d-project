@@ -6,7 +6,7 @@ from airflow.operators.bash_operator import BashOperator as BaseBashOperator
 from airflow.operators.python_operator import PythonOperator as BasePythonOperator
 from airflow.operators.dummy_operator import DummyOperator as BaseDummyOperator
 
-from ariadne.utils import redis_db, mongo_db, create_key, AriadneEncoder
+from ariadne.utils import redis_db, mongo_db, create_key, AriadneEncoder, mongo_dagrun_doc
 
 
 class DummyOperator(BaseDummyOperator):
@@ -19,27 +19,39 @@ class BashOperator(BaseBashOperator):
 
 class PythonOperator(BasePythonOperator):
 
-    def save_task_metadata(self, context, results):
+    def save_task_metadata(self, context, inflow, outflow):
         collection = mongo_db().task_data
 
-        # query = mongo_dagrun_doc(dagrun)
+        query = mongo_dagrun_doc(context["dag_run"])
+        doc = query.copy()
+        doc["task_executions"] = []
+        collection.find_one_and_update(
+            query,
+            {"$setOnInsert": doc},
+            upsert=True
+        )
 
-        payload = {
-            "results": results,
+        task_instance_details = {
+            "task_id": context["ti"].task_id,
+            "inflow": inflow,
+            "outflow": outflow,
+            "parents": [t.task_id for t in context["ti"].task.upstream_list],
             "context": {
                 "dag_id": context["dag"].dag_id,
                 "dagrun_id": context["dag_run"].run_id,
                 "task_id": context["ti"].task_id,
                 "ts": context["ts"],
-                "parents": [t.task_id for t in context["ti"].task.upstream_list],
             }
         }
 
         # convert numpy fields using json encoder
-        payload = json.loads(json.dumps(payload, cls=AriadneEncoder))
+        task_instance_details = json.loads(json.dumps(task_instance_details, cls=AriadneEncoder))
 
-        # insert into mongodb
-        collection.insert(payload)
+        # upsert into mongodb
+        collection.find_one_and_update(
+            query,
+            {"$push": {"task_executions": task_instance_details}}
+        )
 
 
     def inflow(self, context):
@@ -81,13 +93,13 @@ class PythonOperator(BasePythonOperator):
         kwargs["context"]["data"] = incoming
 
         # execute user callable
-        results = super().execute(*args, **kwargs)
+        output = super().execute(*args, **kwargs)
 
         # save outgoing to redis
-        self.outflow(kwargs["context"], results)
+        self.outflow(kwargs["context"], output)
 
         # save to mongodb
-        self.save_task_metadata(kwargs["context"], results)
+        self.save_task_metadata(kwargs["context"], incoming, output)
 
 
 
