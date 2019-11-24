@@ -32,15 +32,9 @@ default_args = {
     # 'end_date': datetime(2016, 1, 1),
 }
 
-dag = DAG('simple-dataflow', default_args=default_args)
+dag = DAG('test-multi-parent', default_args=default_args)
 
 def csv_pop(data, *args, **kwargs):
-    # print(args)
-    # print(kwargs)
-    # print(os.getcwd())
-
-    print("data: {}".format(data))
-
     path = "data/csv/aapl.csv"
     df = pd.read_csv(path)
 
@@ -57,16 +51,33 @@ t1 = PythonOperator(
     dag=dag,
 )
 
-def handler(data, *args, **kwargs):
+def handler(data, field, *args, **kwargs):
+    return data[field]
+
+def handlerDiff(data, *args, **kwargs):
     print(data)
-    priceRange = data["High"] - data["Low"]
-    print(f"priceRange: {priceRange}")
+    return data
 
 t2 = PythonOperator(
-    task_id='handler',
+    task_id='handlerOpen',
     provide_context=True,
     python_callable=handler,
+    op_kwargs={"field": "Open"},
+    dag=dag,
+)
+t3 = PythonOperator(
+    task_id='handlerClose',
+    provide_context=True,
+    python_callable=handler,
+    op_kwargs={"field": "Close"},
     dag=dag,
 )
 
-t1 >> t2
+t4 = PythonOperator(
+    task_id='handlerDiff',
+    provide_context=True,
+    python_callable=handlerDiff,
+    dag=dag,
+)
+
+t1 >> [t2, t3] >> t4

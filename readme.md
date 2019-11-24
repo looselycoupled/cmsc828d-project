@@ -8,5 +8,9 @@ Ariadne was a Cretan princess in Greek mythology. She was mostly associated with
 
 # Tasks
 
-* create multiple operators to store output in redis as json and input data from redis.  key should be the dag run id?
+* taskinstance should get inputs from all parents. all operators should store outputs using run_id & task_id
+
+
 * create CSV operator to pull the top record off and send into pipeline
+* save task metadata to postgres table?
+* save resource utilization of task (integrate `os.times`?)
