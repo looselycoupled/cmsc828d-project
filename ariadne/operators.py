@@ -6,6 +6,8 @@ import psutil
 import numpy
 from pprint import pprint
 
+from airflow.models import SkipMixin
+
 from airflow.operators.bash_operator import BashOperator as BaseBashOperator
 from airflow.operators.python_operator import PythonOperator as BasePythonOperator
 from airflow.operators.dummy_operator import DummyOperator as BaseDummyOperator
@@ -50,9 +52,7 @@ class PythonOperator(BasePythonOperator):
                 "task_id": context["ti"].task_id,
                 "ts": context["ts"],
             },
-            "resource_utilization": {
-                "cpu": task_times,
-            },
+            "resource_utilization": task_times,
             "elapsed": elapsed,
         }
 
@@ -146,5 +146,22 @@ class PythonOperator(BasePythonOperator):
         # save to mongodb
         self.export(kwargs["context"], incoming, output, t.interval, task_times)
 
+        return output
 
 
+class BranchPythonOperator(PythonOperator, SkipMixin):
+    """
+    Allows a workflow to "branch" or follow a path following the execution
+    of this task.
+    It derives the PythonOperator and expects a Python function that returns
+    a single task_id or list of task_ids to follow. The task_id(s) returned
+    should point to a task directly downstream from {self}. All other "branches"
+    or directly downstream tasks are marked with a state of ``skipped`` so that
+    these paths can't move forward. The ``skipped`` states are propagated
+    downstream to allow for the DAG state to fill up and the DAG run's state
+    to be inferred.
+    """
+
+    def execute(self, context):
+        branch = super().execute(context=context)
+        self.skip_all_except(context['ti'], branch)

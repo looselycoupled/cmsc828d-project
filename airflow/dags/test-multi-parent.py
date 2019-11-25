@@ -36,6 +36,7 @@ default_args = {
 dag = DAG('test-multi-parent', default_args=default_args)
 
 def csv_pop(data, *args, **kwargs):
+    waste_time(10000000)
     path = "data/csv/aapl.csv"
     df = pd.read_csv(path)
 
@@ -52,8 +53,8 @@ t1 = PythonOperator(
     dag=dag,
 )
 
-def waste_time():
-    iters = int(random.random() * 100000000)
+def waste_time(incr=100000000):
+    iters = int(random.random() * incr)
     for i in range(iters):
         v = i * i / 2
 
