@@ -1,4 +1,8 @@
 import json
+import time
+import threading
+
+import psutil
 import numpy
 from pprint import pprint
 
@@ -6,7 +10,7 @@ from airflow.operators.bash_operator import BashOperator as BaseBashOperator
 from airflow.operators.python_operator import PythonOperator as BasePythonOperator
 from airflow.operators.dummy_operator import DummyOperator as BaseDummyOperator
 
-from ariadne.utils import redis_db, mongo_db, create_key, AriadneEncoder, mongo_dagrun_doc
+from ariadne.utils import redis_db, mongo_db, create_key, AriadneEncoder, mongo_dagrun_doc, Timer
 
 
 class DummyOperator(BaseDummyOperator):
@@ -19,9 +23,8 @@ class BashOperator(BaseBashOperator):
 
 class PythonOperator(BasePythonOperator):
 
-    def save_task_metadata(self, context, inflow, outflow):
+    def upsert_dagrun_doc(self, context):
         collection = mongo_db().task_data
-
         query = mongo_dagrun_doc(context["dag_run"])
         doc = query.copy()
         doc["task_executions"] = []
@@ -31,6 +34,11 @@ class PythonOperator(BasePythonOperator):
             upsert=True
         )
 
+    def export(self, context, inflow, outflow, elapsed, task_times):
+        collection = mongo_db().task_data
+        query = mongo_dagrun_doc(context["dag_run"])
+
+        # construct task instance record
         task_instance_details = {
             "task_id": context["ti"].task_id,
             "inflow": inflow,
@@ -41,7 +49,11 @@ class PythonOperator(BasePythonOperator):
                 "dagrun_id": context["dag_run"].run_id,
                 "task_id": context["ti"].task_id,
                 "ts": context["ts"],
-            }
+            },
+            "resource_utilization": {
+                "cpu": task_times,
+            },
+            "elapsed": elapsed,
         }
 
         # convert numpy fields using json encoder
@@ -86,20 +98,53 @@ class PythonOperator(BasePythonOperator):
         r.set(key, json.dumps(payload, cls=AriadneEncoder))
 
 
+    def pre_execute(self, context):
+        # ensure mongodb doc exists for this dagrun
+        self.upsert_dagrun_doc(context)
+
+
+    def big_brother(self, times):
+        t = threading.currentThread()
+        p = psutil.Process()
+        while getattr(t, "go", True):
+
+            with p.oneshot():
+                times.append({
+                    "time": time.time(),
+                    "cpu_times": dict(p.cpu_times()._asdict()),
+                    "virtual_memory": dict(psutil.virtual_memory()._asdict()),
+                    "swap_memory": dict(psutil.swap_memory()._asdict()),
+                    "memory_info": dict(p.memory_info()._asdict()),
+                    "memory_usage": p.memory_info().rss
+                })
+            time.sleep(.04)
+
+        print("big brother shutting down")
+
+
+
     def execute(self, *args, **kwargs):
 
         # collect incoming data and add to context
         incoming = self.inflow(kwargs["context"])
         kwargs["context"]["data"] = incoming
+        task_times = []
+
+        thrd = threading.Thread(target=self.big_brother, args=(task_times,))
+        thrd.start()
 
         # execute user callable
-        output = super().execute(*args, **kwargs)
+        with Timer() as t:
+            output = super().execute(*args, **kwargs)
+
+        thrd.go = False
+        thrd.join()
 
         # save outgoing to redis
         self.outflow(kwargs["context"], output)
 
         # save to mongodb
-        self.save_task_metadata(kwargs["context"], incoming, output)
+        self.export(kwargs["context"], incoming, output, t.interval, task_times)
 
 
 

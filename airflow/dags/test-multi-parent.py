@@ -9,6 +9,7 @@ sys.path.append(
     ))
 )
 
+import random
 from airflow import DAG
 from ariadne.operators import *
 from datetime import datetime, timedelta
@@ -51,11 +52,18 @@ t1 = PythonOperator(
     dag=dag,
 )
 
+def waste_time():
+    iters = int(random.random() * 100000000)
+    for i in range(iters):
+        v = i * i / 2
+
 def handler(data, field, *args, **kwargs):
+    waste_time()
     return data[field]
 
 def handlerDiff(data, *args, **kwargs):
     print(data)
+    waste_time()
     return data[1] - data[0]
 
 t2 = PythonOperator(
