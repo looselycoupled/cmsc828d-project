@@ -60,3 +60,8 @@ Restore the database...
 mongorestore -d ariadne mongoBackups/ariadne
 ```
 
+Indexes...
+
+```javascript
+db.airflow.createIndex({"task_executions.task_id": 1}, {"name": "task_id_index"})
+```
