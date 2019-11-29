@@ -15,8 +15,7 @@ from ariadne.operators import *
 from datetime import datetime, timedelta
 from pprint import pprint
 import pandas as pd
-
-
+import web_pdb
 
 default_args = {
     'owner': 'Airflow',
@@ -62,7 +61,15 @@ def handler(data, field, *args, **kwargs):
     waste_time()
     return data[field]
 
+# def debug(**kwargs):
+#     if kwargs.get("test_mode", False):
+#         web_pdb.set_trace()
+
+
 def handlerDiff(data, *args, **kwargs):
+    if kwargs.get("test_mode", False):
+        web_pdb.set_trace()
+
     print(data)
     waste_time()
     return data[1] - data[0]

@@ -2,9 +2,11 @@ import json
 import time
 import threading
 
+import web_pdb
 import psutil
 import numpy
 from pprint import pprint
+import time
 
 from airflow.models import SkipMixin
 
@@ -14,6 +16,8 @@ from airflow.operators.dummy_operator import DummyOperator as BaseDummyOperator
 
 from ariadne.utils import redis_db, mongo_db, create_key, AriadneEncoder, mongo_dagrun_doc, Timer
 
+
+# debug = lambda: web_pdb.set_trace()
 
 class DummyOperator(BaseDummyOperator):
     pass
@@ -103,7 +107,7 @@ class PythonOperator(BasePythonOperator):
         self.upsert_dagrun_doc(context)
 
 
-    def big_brother(self, times):
+    def watcher(self, times):
         t = threading.currentThread()
         p = psutil.Process()
         while getattr(t, "go", True):
@@ -119,9 +123,6 @@ class PythonOperator(BasePythonOperator):
                 })
             time.sleep(.04)
 
-        print("big brother shutting down")
-
-
 
     def execute(self, *args, **kwargs):
 
@@ -130,11 +131,12 @@ class PythonOperator(BasePythonOperator):
         kwargs["context"]["data"] = incoming
         task_times = []
 
-        thrd = threading.Thread(target=self.big_brother, args=(task_times,))
+        thrd = threading.Thread(target=self.watcher, args=(task_times,))
         thrd.start()
 
         # execute user callable
         with Timer() as t:
+            # import pdb; pdb.set_trace()
             output = super().execute(*args, **kwargs)
 
         thrd.go = False
