@@ -51,17 +51,18 @@ what do we want to see once we select a DAG?
 Backup the database...
 
 ```bash
-mongodump -d ariadne -o mongoBackups
+mongodump -d ariadne -o mongoBackups && tar -cvzf ariadne.mongodb.backup.tar.gz mongoBackups && rm -rf mongoBackups
 ```
 
 Restore the database...
 
 ```bash
-mongorestore -d ariadne mongoBackups/ariadne
+tar -xzvf ariadne.mongodb.backup.tar.gz && mongorestore -d ariadne mongoBackups/ariadne && rm -rf mongoBackups
 ```
 
 Indexes...
 
 ```javascript
-db.airflow.createIndex({"task_executions.task_id": 1}, {"name": "task_id_index"})
+use ariadne
+db.task_data.createIndex({"task_executions.task_id": 1}, {"name": "task_id_index"})
 ```
