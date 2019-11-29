@@ -1,47 +1,27 @@
 # Overview
 
-The repository houses the code for the CMSC 828D group project: **Implementing a guided forensic analysis tool for a distributed dataflow system**.
+We provide a two part system in order to provide the visualization and analysis of failures within a distributed dataflow system.  In a dataflow system, data (either streaming or batch) can will flow from one node to the next in a dataflow graph of operations.  Each operation will act upon the data in some way.  But failures in a distributed system can be difficult to troubleshoot due to the distributed nature.
 
-## Notes
+This project modified Apache Airflow to act as an idealized dataflow system so that we can build dataflows and gather provenance data during execution.  We then provide the means for analysis and visualization through a web component designed to aid the user resolve failures in the system.
 
-Operators have been converted too look like streaming dataflow nodes.  Inputs are taken from redis using parent task names and outputs are stored in redis using current task name (plus dagrun.run_id).
+## DataFlow Component Overview
 
-All DAGs should disable retries to limit taskinstance.try_number to 1.
+Our dataflow codebase models a standard dataflow type application.  Data items (scalars or vectors) flow from node to node such that the outputs of one node are the inputs for the next.  Per standard dataflow architectures, a node may send its output to multiple children.  Similarly, a child node may get its inputs from multiple parents.  There are branching and other operators to build more complex data workflows.
 
-## Project TODOs
+Along the way, we record execution information and store this in MongoDB.
 
-* store after-task metadata inside dagrun json object rather than as separate mongodb objects
-* save resource utilization of task (integrate `os.times`?)
+## UI Component Overview
 
+Our django codebase has been created to assist with analysis of of the dataflow application.  Specifically, we want to provide the means to perform a forensic analysis to troubleshoot errors that occur within the system.  A second (major) goal is to allow the user to follow a suspect/questionable data item as it flows through the system.
 
+### Forensic Analysis
 
+If an error occurs, we want to provide the tools to help diagnose the issue.  This is not just error reporting.  See execution analysis for some related ideas.
 
+### Exection Analysis
 
-1. task should get dagrun metadata from mongodb.  if not available then create new document.
+Any given data item could flow through the entire system and produce incorrect results without raising any Exceptions.  It would be useful if we could:
 
-```python
-document = {
-    "dag": dag_id,
-    "execution_time": "",
-    "run_id": "",
-    "task_executions_": [
-        {
-            "task_id": ti.task.task_id,
-            "try_number": ti.try_number,
-            "inflow": None,
-            "outflow": None,
-            "resource_utilization": {
-                "cpu": [],
-            },
-            "total_execution_time": None,
-        },
-    ]
-
-}
-```
-
-
-## About
-
-Ariadne was a Cretan princess in Greek mythology. She was mostly associated with mazes and labyrinths because of her involvement in the myths of the Minotaur and Theseus.
-
+* identify when this happens
+* follow the changes through the system
+* be able to inspect variables at execution time to determine what is happening
