@@ -15,7 +15,7 @@ def redis_db():
 
 def mongo_db():
     m = MongoClient()
-    return m.airflow
+    return m.ariadne
 
 def mongo_dagrun_doc(dagrun):
     return {

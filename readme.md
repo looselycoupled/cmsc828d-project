@@ -25,3 +25,38 @@ Any given data item could flow through the entire system and produce incorrect r
 * identify when this happens
 * follow the changes through the system
 * be able to inspect variables at execution time to determine what is happening
+
+### Functionality Brainstorm
+
+#### Dashboard
+
+Once accessing the system, the user should see some sort of dashboard containing overall health.  We should see information about:
+
+the dataflows that are available to inspect...
+
+a visualization showing successful vs errored runs over the last day, etc.
+
+
+what do we want to see once we select a DAG?
+
+* the ability to search for a specific dag run...
+    * search by date/time?
+    * search by task name/input value?
+    * search by task name/output value?
+
+## Setup / Maintenance
+
+### MongoDB Database
+
+Backup the database...
+
+```bash
+mongodump -d ariadne -o mongoBackups
+```
+
+Restore the database...
+
+```bash
+mongorestore -d ariadne mongoBackups/ariadne
+```
+

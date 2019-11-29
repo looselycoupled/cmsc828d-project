@@ -1,6 +1,9 @@
 airflow/logs/*
 airflow/airflow-webserver.pid
 .vscode/
+mongoBackups/
+sandbox.py
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
