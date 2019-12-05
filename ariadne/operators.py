@@ -40,7 +40,7 @@ class PythonOperator(BasePythonOperator):
             upsert=True
         )
 
-    def export(self, context, inflow, outflow, elapsed, task_times):
+    def export(self, context, inflow, outflow, elapsed, task_times, error):
         collection = mongo_db().task_data
         query = mongo_dagrun_doc(context["dag_run"])
 
@@ -58,6 +58,7 @@ class PythonOperator(BasePythonOperator):
             },
             "resource_utilization": task_times,
             "elapsed": elapsed,
+            "error": error,
         }
 
         # convert numpy fields using json encoder
@@ -130,23 +131,38 @@ class PythonOperator(BasePythonOperator):
         incoming = self.inflow(kwargs["context"])
         kwargs["context"]["data"] = incoming
         task_times = []
+        error = False
 
         thrd = threading.Thread(target=self.watcher, args=(task_times,))
         thrd.start()
 
         # execute user callable
+        output = None
         with Timer() as t:
-            # import pdb; pdb.set_trace()
-            output = super().execute(*args, **kwargs)
+            try:
+                output = super().execute(*args, **kwargs)
+            except Exception as e:
+                error = True
+                raise
+            finally:
+                # save to mongodb
+                # import pdb; pdb.set_trace()
+                self.export(
+                    kwargs["context"],
+                    incoming,
+                    output,
+                    t.interval,
+                    task_times,
+                    error
+                )
 
-        thrd.go = False
-        thrd.join()
+
+                thrd.go = False
+                thrd.join()
 
         # save outgoing to redis
         self.outflow(kwargs["context"], output)
 
-        # save to mongodb
-        self.export(kwargs["context"], incoming, output, t.interval, task_times)
 
         return output
 

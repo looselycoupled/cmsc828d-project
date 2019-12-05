@@ -17,6 +17,8 @@ from pprint import pprint
 import pandas as pd
 import web_pdb
 
+error_threshold = .2
+
 default_args = {
     'owner': 'Airflow',
     'depends_on_past': False,
@@ -32,10 +34,10 @@ default_args = {
     # 'end_date': datetime(2016, 1, 1),
 }
 
-dag = DAG('test-multi-parent', default_args=default_args)
+dag = DAG('test-random-error', default_args=default_args)
 
 def csv_pop(data, *args, **kwargs):
-    waste_time(10000000)
+    waste_time(1000000)
     path = "data/csv/aapl.csv"
     df = pd.read_csv(path)
 
@@ -54,25 +56,20 @@ t1 = PythonOperator(
     dag=dag,
 )
 
-def waste_time(incr=100000000):
+def waste_time(incr=1000000):
     iters = int(random.random() * incr)
     for i in range(iters):
         v = i * i / 2
 
 def handler(data, field, *args, **kwargs):
     waste_time()
+    if random.random() < error_threshold:
+        raise Exception("invalid data encountered")
     return data[field]
-
-# def debug(**kwargs):
-#     if kwargs.get("test_mode", False):
-#         web_pdb.set_trace()
-
 
 def handlerDiff(data, *args, **kwargs):
     if kwargs.get("test_mode", False):
         web_pdb.set_trace()
-
-    print(data)
     waste_time()
     return data[1] - data[0]
 

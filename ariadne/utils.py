@@ -68,6 +68,13 @@ class Timer:
     """
     def __init__(self):
         self.time = time.time
+        self.finish = None
+
+    @property
+    def interval(self):
+        if self.finish:
+            return self.finish - self.start
+        return self.time() - self.start
 
     def __enter__(self):
         self.start = self.time()
@@ -75,7 +82,6 @@ class Timer:
 
     def __exit__(self, *exc):
         self.finish = self.time()
-        self.interval = self.finish - self.start
 
     def __str__(self):
         return human_readable_time(self.interval)
