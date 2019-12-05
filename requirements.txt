@@ -1,1 +1,4 @@
 apache-airflow[celery, postgres, kubernetes]
+requests
+arrow
+redis
