@@ -35,6 +35,9 @@ default_args = {
 dag = DAG('test-multi-parent', default_args=default_args)
 
 def csv_pop(data, *args, **kwargs):
+    if kwargs.get("test_mode", False):
+        web_pdb.set_trace()
+
     waste_time(10000000)
     path = "data/csv/aapl.csv"
     df = pd.read_csv(path)
@@ -60,6 +63,8 @@ def waste_time(incr=100000000):
         v = i * i / 2
 
 def handler(data, field, *args, **kwargs):
+    if kwargs.get("test_mode", False):
+        web_pdb.set_trace()
     waste_time()
     return data[field]
 

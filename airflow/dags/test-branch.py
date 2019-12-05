@@ -43,11 +43,17 @@ def waste_time(incr=100000000):
 
 
 def coin_flip(*args, **kwargs):
+    if kwargs.get("test_mode", False):
+        web_pdb.set_trace()
+
     waste_time()
     return random.randint(0,1)
 
 
 def choose(data, *args, choices, **kwargs):
+    if kwargs.get("test_mode", False):
+        web_pdb.set_trace()
+
     if data:
         return choices[1]
     return choices[0]
