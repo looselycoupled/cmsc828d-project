@@ -22,7 +22,7 @@ error_threshold = .2
 default_args = {
     'owner': 'Airflow',
     'depends_on_past': False,
-    'start_date': datetime(2019, 11, 23),
+    'start_date': datetime(2019, 12, 1),
     'email': ['allen.leis@gmail.com'],
     'email_on_failure': False,
     'email_on_retry': False,

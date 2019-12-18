@@ -1,6 +1,9 @@
+import os
+import sys
 import json
 import time
 import threading
+import traceback
 
 import web_pdb
 import psutil
@@ -138,11 +141,44 @@ class PythonOperator(BasePythonOperator):
 
         # execute user callable
         output = None
+        errinfo = {
+            "errored": False,
+        }
         with Timer() as t:
             try:
                 output = super().execute(*args, **kwargs)
             except Exception as e:
-                error = True
+                exc_type, exc_value, exc_tb = sys.exc_info()
+                tb = traceback.TracebackException(*sys.exc_info())
+                fmt_tb = "".join(list(tb.format()))
+
+                filename, linenum, funcname, source = traceback.extract_tb(exc_tb)[-1]
+                with open(filename, "r") as f:
+                    sourcecode = f.readlines()
+                # fline = max(linenum - 1, 1) - 1
+                # eline = min(linenum + 1, len(sourcecode)) - 1
+                # questionable_code = sourcecode[fline:eline]
+
+                # template = '{filename:<23}:{linenum}:{funcname}:\n    {source}'
+                # condensed_tb = template.format(
+                #     filename=os.path.basename(filename),
+                #     linenum=linenum,
+                #     source=source,
+                #     funcname=funcname
+                # )
+
+                errinfo = {
+                    "errored": True,
+                    "tb": fmt_tb,
+                    # "condensed_tb": condensed_tb,
+                    "exc": e.__repr__(),
+                    "msg": str(e),
+                    "sourcecode": sourcecode,
+                    "linenum": linenum,
+                    "funcname": funcname,
+                    "source": source,
+                    "filename": filename,
+                }
                 raise
             finally:
                 # save to mongodb
@@ -153,7 +189,7 @@ class PythonOperator(BasePythonOperator):
                     output,
                     t.interval,
                     task_times,
-                    error
+                    errinfo
                 )
 
 
